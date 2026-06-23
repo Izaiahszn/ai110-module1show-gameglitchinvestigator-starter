@@ -52,17 +52,21 @@ def update_score(current_score: int, outcome: str, attempt_number: int):
         points = 100 - 10 * (attempt_number + 1)
         if points < 10:
             points = 10
-        return current_score + points
-
-    if outcome == "Too High":
+        new_score = current_score + points
+    elif outcome == "Too High":
         if attempt_number % 2 == 0:
-            return current_score + 5
-        return current_score - 5
-
-    if outcome == "Too Low":
-        return current_score - 5
-
-    return current_score
+            new_score = current_score + 5
+        else:
+            new_score = current_score - 5
+    elif outcome == "Too Low":
+        new_score = current_score - 5
+    else:
+        new_score = current_score
+    
+    # BUG FIX: Score was going negative due to unbounded deductions
+    # Penalty deductions on "Too High" (odd attempts) and "Too Low" could reduce score below 0
+    # Solution: Clamp score to stay within valid bounds: minimum 1, maximum 100 (no 0 allowed)
+    return max(1, min(100, new_score))
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -93,10 +97,10 @@ if "secret" not in st.session_state:
     st.session_state.secret = random.randint(low, high)
 
 if "attempts" not in st.session_state:
-    st.session_state.attempts = 1
+    st.session_state.attempts = 0
 
 if "score" not in st.session_state:
-    st.session_state.score = 0
+    st.session_state.score = 1
 
 if "status" not in st.session_state:
     st.session_state.status = "playing"
@@ -132,8 +136,15 @@ with col3:
     show_hint = st.checkbox("Show hint", value=True)
 
 if new_game:
+    # BUG FIX: New game button wasn't working after game ended
+    # The status was still "won" or "lost", so the game-over check would prevent restarting
+    # Solution: Reset all game state including status back to "playing"
+    # BUG FIX: Off-by-one error in attempt counting - initialize to 0 not 1
     st.session_state.attempts = 0
+    st.session_state.score = 1
     st.session_state.secret = random.randint(1, 100)
+    st.session_state.status = "playing"
+    st.session_state.history = []
     st.success("New game started.")
     st.rerun()
 
@@ -155,12 +166,11 @@ if submit:
     else:
         st.session_state.history.append(guess_int)
 
-        if st.session_state.attempts % 2 == 0:
-            secret = str(st.session_state.secret)
-        else:
-            secret = st.session_state.secret
-
-        outcome, message = check_guess(guess_int, secret)
+        # BUG FIX: Higher/lower hints were broken due to string type conversion
+        # On even attempts, secret was converted to string, breaking numeric comparison
+        # This caused string comparison instead of numeric, giving wrong hints
+        # Solution: Always pass numeric secret for proper numeric comparison
+        outcome, message = check_guess(guess_int, st.session_state.secret)
 
         if show_hint:
             st.warning(message)
@@ -179,7 +189,9 @@ if submit:
                 f"Final score: {st.session_state.score}"
             )
         else:
-            if st.session_state.attempts >= attempt_limit:
+            # BUG FIX: Off-by-one error - use > instead of >= to allow exactly attempt_limit guesses
+            # With >= it ends one attempt too early; with >, game ends after the final allowed attempt
+            if st.session_state.attempts > attempt_limit:
                 st.session_state.status = "lost"
                 st.error(
                     f"Out of attempts! "

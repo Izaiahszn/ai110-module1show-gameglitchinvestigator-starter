@@ -26,19 +26,21 @@ It wrote the code, ran away, and now the game is unplayable.
 ## 📝 Document Your Experience
 
 - [ ] Describe the game's purpose.
-- [ ] Detail which bugs you found.
+The purpose of the game is you have a certain amount of guesses to guess the random number the website gives to you and you win if you guess correctly
+- [ ] New game wouldn't work, sometimes the game would give negative values for the real answer when it was supposed to be 1 - 100, sometimes you'd get the real answer on the second to last attempt instead of the last attempt
 - [ ] Explain what fixes you applied.
+I negative value features by adding bounds, I fixed the higher or lower feature because of the comparison check, i fixed getting the real answer being displayed on the second to last attempt from a logic error which was from a less than or equal to symbol.
 
 ## 📸 Demo Walkthrough
 
 Describe your fixed game in numbered steps so a reader can follow along without watching a video:
 
-1. <!-- Describe this step -->
-2. <!-- Describe this step -->
-3. <!-- Describe this step -->
-4. <!-- Describe this step -->
-5. <!-- Add more steps as needed -->
-
+1. User is displayed to guess a number between 1 and 100 and is shown how many atte,pts they have
+2. You are allowed to submit a guess with a hint to go lower or higher based on your submission
+3. The secret value stays the same across each attempt and attempts go down after every guess
+4. You either guess correctly or incorrectly 
+5. if you guess correctly balloons say that you won
+6. if you guess inccorectly you can restart the game and it shows what the value was
 **Screenshot** *(optional)*: <!-- Insert a screenshot of your fixed, winning game here -->
 
 ## 🧪 Test Results
