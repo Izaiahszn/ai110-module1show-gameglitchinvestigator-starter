@@ -1,72 +1,12 @@
 import random
 import streamlit as st
 
-def get_range_for_difficulty(difficulty: str):
-    if difficulty == "Easy":
-        return 1, 20
-    if difficulty == "Normal":
-        return 1, 100
-    if difficulty == "Hard":
-        return 1, 50
-    return 1, 100
-
-
-def parse_guess(raw: str):
-    if raw is None:
-        return False, None, "Enter a guess."
-
-    if raw == "":
-        return False, None, "Enter a guess."
-
-    try:
-        if "." in raw:
-            value = int(float(raw))
-        else:
-            value = int(raw)
-    except Exception:
-        return False, None, "That is not a number."
-
-    return True, value, None
-
-
-def check_guess(guess, secret):
-    if guess == secret:
-        return "Win", "🎉 Correct!"
-
-    try:
-        if guess > secret:
-            return "Too High", "📈 Go HIGHER!"
-        else:
-            return "Too Low", "📉 Go LOWER!"
-    except TypeError:
-        g = str(guess)
-        if g == secret:
-            return "Win", "🎉 Correct!"
-        if g > secret:
-            return "Too High", "📈 Go HIGHER!"
-        return "Too Low", "📉 Go LOWER!"
-
-
-def update_score(current_score: int, outcome: str, attempt_number: int):
-    if outcome == "Win":
-        points = 100 - 10 * (attempt_number + 1)
-        if points < 10:
-            points = 10
-        new_score = current_score + points
-    elif outcome == "Too High":
-        if attempt_number % 2 == 0:
-            new_score = current_score + 5
-        else:
-            new_score = current_score - 5
-    elif outcome == "Too Low":
-        new_score = current_score - 5
-    else:
-        new_score = current_score
-    
-    # BUG FIX: Score was going negative due to unbounded deductions
-    # Penalty deductions on "Too High" (odd attempts) and "Too Low" could reduce score below 0
-    # Solution: Clamp score to stay within valid bounds: minimum 1, maximum 100 (no 0 allowed)
-    return max(1, min(100, new_score))
+from logic_utils import (
+    check_guess,
+    get_range_for_difficulty,
+    parse_guess,
+    update_score,
+)
 
 st.set_page_config(page_title="Glitchy Guesser", page_icon="🎮")
 
@@ -111,7 +51,7 @@ if "history" not in st.session_state:
 st.subheader("Make a guess")
 
 st.info(
-    f"Guess a number between 1 and 100. "
+    f"Guess a number between {low} and {high}. "
     f"Attempts left: {attempt_limit - st.session_state.attempts}"
 )
 
@@ -142,7 +82,7 @@ if new_game:
     # BUG FIX: Off-by-one error in attempt counting - initialize to 0 not 1
     st.session_state.attempts = 0
     st.session_state.score = 1
-    st.session_state.secret = random.randint(1, 100)
+    st.session_state.secret = random.randint(low, high)
     st.session_state.status = "playing"
     st.session_state.history = []
     st.success("New game started.")
@@ -189,9 +129,8 @@ if submit:
                 f"Final score: {st.session_state.score}"
             )
         else:
-            # BUG FIX: Off-by-one error - use > instead of >= to allow exactly attempt_limit guesses
-            # With >= it ends one attempt too early; with >, game ends after the final allowed attempt
-            if st.session_state.attempts > attempt_limit:
+            # End immediately after the final allowed incorrect guess.
+            if st.session_state.attempts >= attempt_limit:
                 st.session_state.status = "lost"
                 st.error(
                     f"Out of attempts! "
